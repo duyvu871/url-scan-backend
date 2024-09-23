@@ -1,0 +1,35 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/server.js",
+    "dev": "set NODE_ENV=development && set PORT=4000 && nodemon --ignore storage src/server.js"
+  },
+  "private": true,
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.3",
+    "browserless": "^10.6.0",
+    "connect-flash": "^0.1.1",
+    "cors": "^2.8.5",
+    "dirbuster": "^0.4.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "helmet": "^7.1.0",
+    "html-get": "^2.16.11",
+    "node-nmap": "^4.0.0",
+    "puppeteer": "^23.4.0",
+    "simple-wappalyzer": "^1.1.68",
+    "socket.io": "^4.8.0",
+    "subquest": "^1.5.3",
+    "uuid": "^10.0.0",
+    "validator": "^13.12.0",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}
