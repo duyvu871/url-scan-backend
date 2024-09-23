@@ -2,7 +2,7 @@ module.exports = {
     apps: [
         {
             name: 'connected-brain-back-end',
-            script: 'npm run start',
+            script: 'src/server.js',
             out_file: "./back-end-out.log",
             error_file: "./back-end-error.log",
             log_date_format: "DD-MM HH:mm:ss Z",

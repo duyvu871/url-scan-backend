@@ -18,6 +18,7 @@ require('dotenv').config({
     path: path.join(__dirname, '../.env')
 });
 process.env.NODE_ENV = process.env.NODE_ENV.trim() || 'development';
+console.log('Environment:', process.env.NODE_ENV);
 global.__basedir = __dirname;
 global.__rootdir = path.resolve(__dirname, '../');
 
@@ -133,7 +134,7 @@ apiRouter.post('/domain-dir-buster', AsyncMiddleware.asyncHandler(async (req, re
 
 apiRouter.post('/domain-dir-buster/:clientId/abort', (req, res) => {
     if (globalThis.__dirbusterStream__ && globalThis.__dirbusterStream__[req.params.clientId]) {
-        console.log(req.params.clientId);
+        // console.log(req.params.clientId);
         globalThis.__dirbusterStream__[req.params.clientId].end();
         res.status(200).send({ message: 'Aborted' }).end();
     } else {
@@ -141,7 +142,7 @@ apiRouter.post('/domain-dir-buster/:clientId/abort', (req, res) => {
     }
 });
 
-apiRouter.post('/check-headers', async (req, res) => {
+apiRouter.post('/check-headers', AsyncMiddleware.asyncHandler(async (req, res) => {
     if (!req.body.clientId) return res.status(200).send({error: 'clientId is not provided'}).end();
     const cacheData = cache.get(req.body.clientId);
     if (!cacheData) return res.status(404).send({error: 'Client not found'}).end();
@@ -153,16 +154,16 @@ apiRouter.post('/check-headers', async (req, res) => {
         for (const checkName in headerChecks) {
             results[checkName] = await headerChecks[checkName](url);
         }
-        console.log(results);
+        // console.log(results);
 
         res.json({ results });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });
     }
-});
+}));
 
-apiRouter.post('/get-headers', async (req, res) => {
+apiRouter.post('/get-headers', AsyncMiddleware.asyncHandler(async (req, res) => {
     if (!req.body.clientId) return res.status(200).send({error: 'clientId is not provided'}).end();
     const cacheData = cache.get(req.body.clientId);
     if (!cacheData) return res.status(404).send({error: 'Client not found'}).end();
@@ -176,7 +177,24 @@ apiRouter.post('/get-headers', async (req, res) => {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });
     }
-});
+}));
+
+apiRouter.post('/nmap', AsyncMiddleware.asyncHandler(async (req, res) => {
+    if (!req.body.clientId) return res.status(200).send({error: 'clientId is not provided'}).end();
+    const cacheData = cache.get(req.body.clientId);
+    if (!cacheData) return res.status(404).send({error: 'Client not found'}).end();
+    const url = cacheData.url;
+
+    try {
+        const nmap = require("./services/nmap");
+        const results = await nmap(url);
+        if (!results) return res.status(404).send({error: 'No data found'}).end();
+        res.json({ results });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}));
 
 app.use('/api/v1', apiRouter);
 
