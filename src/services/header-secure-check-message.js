@@ -113,7 +113,7 @@ function execPromise(command) {
     return new Promise((resolve, reject) => {
         exec(command, (error, stdout, stderr) => {
             if (error) {
-                reject(error);
+                reject(null);
             } else {
                 resolve({ stdout, stderr });
             }
