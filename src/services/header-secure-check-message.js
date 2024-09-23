@@ -4,7 +4,7 @@ const headerChecks = {
     checkHSTS: async (url) => {
         const command = process.env.NODE_ENV === 'development'
             ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['Strict-Transport-Security']"`
-            : `curl -I ${url} | grep Strict-Transport-Security`;
+            : `curl -I ${url} | grep 'Strict-Transport-Security'`;
 
         const { stdout } = await execPromise(command);
         if (stdout) {
@@ -21,7 +21,7 @@ const headerChecks = {
     checkXFrameOptions: async (url) => {
         const command = process.env.NODE_ENV === 'development'
             ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['X-Frame-Options']"`
-            : `curl -I ${url} | grep X-Frame-Options`;
+            : `curl -I ${url} | grep 'X-Frame-Options'`;
 
         const { stdout } = await execPromise(command);
         if (stdout) {
@@ -36,7 +36,7 @@ const headerChecks = {
     checkXContentTypeOptions: async (url) => {
         const command = process.env.NODE_ENV === 'development'
             ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['X-Content-Type-Options']"`
-            : `curl -I ${url} | grep X-Content-Type-Options`;
+            : `curl -I ${url} | grep 'X-Content-Type-Options'`;
 
         const { stdout } = await execPromise(command);
         if (stdout) {
@@ -51,7 +51,7 @@ const headerChecks = {
     checkCSP: async (url) => {
         const command = process.env.NODE_ENV === 'development'
             ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['Content-Security-Policy']"`
-            : `curl -I ${url} | grep Content-Security-Policy`;
+            : `curl -I ${url} | grep 'Content-Security-Policy'`;
 
         const { stdout } = await execPromise(command);
         return stdout
@@ -62,7 +62,7 @@ const headerChecks = {
     checkReferrerPolicy: async (url) => {
         const command = process.env.NODE_ENV === 'development'
             ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['Referrer-Policy']"`
-            : `curl -I ${url} | grep Referrer-Policy`;
+            : `curl -I ${url} | grep 'Referrer-Policy'`;
 
         const { stdout } = await execPromise(command);
         if (stdout) {
@@ -79,7 +79,7 @@ const headerChecks = {
     checkXXSSProtection: async (url) => {
         const command = process.env.NODE_ENV === 'development'
             ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['X-XSS-Protection']"`
-            : `curl -I ${url} | grep X-XSS-Protection`;
+            : `curl -I ${url} | grep 'X-XSS-Protection'`;
 
         const { stdout } = await execPromise(command);
         if (stdout) {
@@ -94,7 +94,7 @@ const headerChecks = {
     checkSecureCookies: async (url) => {
         const command = process.env.NODE_ENV === 'development'
             ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['Set-Cookie']"`
-            : `curl -I ${url} | grep Set-Cookie`;
+            : `curl -I ${url} | grep 'Set-Cookie'`;
 
         const { stdout } = await execPromise(command);
         if (stdout) {
