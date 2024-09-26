@@ -1,7 +1,7 @@
 module.exports = {
     apps: [
         {
-            name: 'connected-brain-back-end',
+            name: 'connected-brain-back-end-url-scanner',
             script: 'src/server.js',
             out_file: "./back-end-out.log",
             error_file: "./back-end-error.log",

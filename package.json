@@ -20,6 +20,7 @@
     "express": "^4.21.0",
     "helmet": "^7.1.0",
     "html-get": "^2.16.11",
+    "lodash": "^4.17.21",
     "node-nmap": "^4.0.0",
     "puppeteer": "^23.4.0",
     "simple-wappalyzer": "^1.1.68",

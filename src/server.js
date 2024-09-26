@@ -150,13 +150,21 @@ apiRouter.post('/check-headers', AsyncMiddleware.asyncHandler(async (req, res) =
 
     try {
         const headerChecks = require("./services/header-secure-check-message");
-        const results = {};
+        const results = [];
+        const names = [];
         for (const checkName in headerChecks) {
-            results[checkName] = await headerChecks[checkName](url);
+            names.push(checkName);
+            results.push(headerChecks[checkName](url));
         }
-        // console.log(results);
+        const allResults = await Promise.all(results);
+        const responseResults = allResults.reduce((acc, cur, index) => {
+            return {
+                ...acc,
+                [names[index]]: cur
+            }
+        }, {});
 
-        res.json({ results });
+        res.json({ responseResults });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });
