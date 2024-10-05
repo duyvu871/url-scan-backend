@@ -11,14 +11,19 @@ function getCommand(url, headerName) {
 
 function execPromise(command) {
     return new Promise((resolve, reject) => {
-        exec(command, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Lỗi khi thực thi lệnh: ${command}`, error);
-                reject(null);
-            } else {
-                resolve({ stdout, stderr });
-            }
-        });
+        try {
+            exec(command, (error, stdout, stderr) => {
+                if (error) {
+                    console.log(`Lỗi khi thực thi lệnh: ${command}`, error);
+                    reject(null);
+                } else {
+                    resolve({ stdout, stderr });
+                }
+            });
+        } catch (e) {
+            console.error(`Lỗi khi thực thi lệnh: ${command}`, e);
+            reject(null);
+        }
     });
 }
 
