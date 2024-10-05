@@ -180,12 +180,14 @@ async function getHeaders(url) {
                     isResponseHeader = true;
                     continue;
                 }
+                requestHeaders.push(header);
+                responseHeaders.push(header);
 
-                if (isResponseHeader) {
-                    responseHeaders.push(header);
-                } else {
-                    requestHeaders.push(header);
-                }
+                // if (isResponseHeader) {
+                //     responseHeaders.push(header);
+                // } else {
+                //     requestHeaders.push(header);
+                // }
             }
 
             return {
