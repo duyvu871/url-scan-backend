@@ -292,14 +292,14 @@ let nmap = {
 //
 // nmapscan.startScan();
 
-async function nmapScan(url) {
+async function nmapScan(url){
+   console.log(url);
    return new Promise((resolve, reject) => {
-
-       // nmap.nmapLocation = "nmap"; //default
-       let quickscan = new nmap.NmapScan(url+' -O -sV --script vulners');
+       nmap.nmapLocation = "nmap"; //default
+       let quickscan = new nmap.NmapScan(url.replace('https://', "")+' -O -sV --script vulners');
        quickscan.on('complete', function(data) {
            resolve(data);
-           console.log(data);
+           // console.log(data);
        });
        quickscan.on('error', function(error){
            reject(null);

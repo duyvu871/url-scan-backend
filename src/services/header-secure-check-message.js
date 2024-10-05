@@ -1,124 +1,154 @@
 const { exec } = require('child_process');
+const _ = require('lodash');
 
-const headerChecks = {
-    checkHSTS: async (url) => {
-        const command = process.env.NODE_ENV === 'development'
-            ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['Strict-Transport-Security']"`
-            : `curl -I ${url} | grep 'Strict-Transport-Security'`;
-
-        const { stdout } = await execPromise(command);
-        if (stdout) {
-            const includeSubDomains = stdout.includes('includeSubDomains');
-            const maxAge = parseInt(stdout.match(/max-age=(\d+)/)?.[1] || "0");
-            return includeSubDomains && maxAge >= 31536000
-                ? "HSTS is configured securely with includeSubDomains and max-age of at least 1 year."
-                : "HSTS is configured insecurely, missing includeSubDomains or max-age is too short.";
-        } else {
-            return "HSTS header not found. Website is vulnerable to Man-in-the-Middle attacks.";
-        }
-    },
-
-    checkXFrameOptions: async (url) => {
-        const command = process.env.NODE_ENV === 'development'
-            ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['X-Frame-Options']"`
-            : `curl -I ${url} | grep 'X-Frame-Options'`;
-
-        const { stdout } = await execPromise(command);
-        if (stdout) {
-            return stdout.includes('DENY') || stdout.includes('SAMEORIGIN')
-                ? "X-Frame-Options is configured securely, preventing clickjacking."
-                : "X-Frame-Options is configured insecurely, allowing framing from certain sources.";
-        } else {
-            return "X-Frame-Options header not found. Website is vulnerable to clickjacking attacks.";
-        }
-    },
-
-    checkXContentTypeOptions: async (url) => {
-        const command = process.env.NODE_ENV === 'development'
-            ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['X-Content-Type-Options']"`
-            : `curl -I ${url} | grep 'X-Content-Type-Options'`;
-
-        const { stdout } = await execPromise(command);
-        if (stdout) {
-            return stdout.includes('nosniff')
-                ? "X-Content-Type-Options is configured securely, preventing MIME sniffing."
-                : "X-Content-Type-Options is configured insecurely.";
-        } else {
-            return "X-Content-Type-Options header not found. Website is vulnerable to MIME sniffing attacks.";
-        }
-    },
-
-    checkCSP: async (url) => {
-        const command = process.env.NODE_ENV === 'development'
-            ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['Content-Security-Policy']"`
-            : `curl -I ${url} | grep 'Content-Security-Policy'`;
-
-        const { stdout } = await execPromise(command);
-        return stdout
-            ? "CSP header is configured. Detailed policy inspection is needed to assess security level."
-            : "CSP header not found. Website is vulnerable to XSS and other injection attacks.";
-    },
-
-    checkReferrerPolicy: async (url) => {
-        const command = process.env.NODE_ENV === 'development'
-            ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['Referrer-Policy']"`
-            : `curl -I ${url} | grep 'Referrer-Policy'`;
-
-        const { stdout } = await execPromise(command);
-        if (stdout) {
-            const secureValues = ['no-referrer', 'same-origin', 'strict-origin',
-                'strict-origin-when-cross-origin', 'origin', 'origin-when-cross-origin'];
-            return secureValues.some(value => stdout.includes(value))
-                ? "Referrer-Policy is configured securely, protecting referrer information."
-                : "Referrer-Policy is configured insecurely, potentially disclosing referrer information.";
-        } else {
-            return "Referrer-Policy header not found. Website may leak unnecessary referrer information.";
-        }
-    },
-
-    checkXXSSProtection: async (url) => {
-        const command = process.env.NODE_ENV === 'development'
-            ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['X-XSS-Protection']"`
-            : `curl -I ${url} | grep 'X-XSS-Protection'`;
-
-        const { stdout } = await execPromise(command);
-        if (stdout) {
-            return stdout.includes('1; mode=block')
-                ? "X-XSS-Protection is configured securely, enabling browser's XSS filter and blocking suspicious responses."
-                : "X-XSS-Protection is configured insecurely, disabling browser's XSS filter.";
-        } else {
-            return "X-XSS-Protection header not found. Website is vulnerable to XSS attacks.";
-        }
-    },
-
-    checkSecureCookies: async (url) => {
-        const command = process.env.NODE_ENV === 'development'
-            ? `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['Set-Cookie']"`
-            : `curl -I ${url} | grep 'Set-Cookie'`;
-
-        const { stdout } = await execPromise(command);
-        if (stdout) {
-            const cookies = stdout.trim().split('\n');
-            const secureCookies = cookies.filter(cookie => cookie.includes('Secure') && cookie.includes('HttpOnly'));
-            return secureCookies.length === cookies.length
-                ? "All cookies are configured securely with Secure and HttpOnly flags."
-                : "Some cookies are not configured with Secure and HttpOnly flags. Cookie data is vulnerable to theft.";
-        } else {
-            return "No cookies found.";
-        }
+function getCommand(url, headerName) {
+    if (process.env.NODE_ENV === 'development') {
+        return `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['${headerName}']"`;
+    } else {
+        return `curl -I ${url} | grep '${headerName}'`;
     }
-};
+}
 
 function execPromise(command) {
     return new Promise((resolve, reject) => {
         exec(command, (error, stdout, stderr) => {
             if (error) {
-                reject(null);
+                reject(error);
             } else {
                 resolve({ stdout, stderr });
             }
         });
     });
 }
+
+const headerChecks = {
+    checkHSTS: async (url) => {
+        const command = getCommand(url, 'Strict-Transport-Security');
+        try {
+            const { stdout } = await execPromise(command);
+            if (stdout) {
+                const includeSubDomains = stdout.includes('includeSubDomains');
+                const maxAge = parseInt(stdout.match(/max-age=(\d+)/)?.[1] || "0");
+                const status = includeSubDomains && maxAge >= 31536000 ? 'secure' : 'insecure';
+                const message = includeSubDomains && maxAge >= 31536000
+                    ? "HSTS được cấu hình an toàn với includeSubDomains và max-age ít nhất 1 năm."
+                    : "HSTS được cấu hình không an toàn, thiếu includeSubDomains hoặc max-age quá ngắn.";
+                return { status, header: stdout.trim(), message };
+            } else {
+                return { status: 'missing', header: null, message: "Không tìm thấy header HSTS. Website dễ bị tấn công Man-in-the-Middle." };
+            }
+        } catch (e) {
+            return { status: 'error', header: null, message: e.message };
+        }
+    },
+
+    checkXFrameOptions: async (url) => {
+        const command = getCommand(url, 'X-Frame-Options');
+        try {
+            const { stdout } = await execPromise(command);
+            if (stdout) {
+                const status = stdout.includes('DENY') || stdout.includes('SAMEORIGIN') ? 'secure' : 'insecure';
+                const message = status === 'secure'
+                    ? "X-Frame-Options được cấu hình an toàn, ngăn chặn clickjacking."
+                    : "X-Frame-Options được cấu hình không an toàn, cho phép framing từ một số nguồn.";
+                return { status, header: stdout.trim(), message };
+            } else {
+                return { status: 'missing', header: null, message: "Không tìm thấy header X-Frame-Options. Website dễ bị tấn công clickjacking." };
+            }
+        } catch (e) {
+            return { status: 'error', header: null, message: e.message };
+        }
+    },
+
+    checkXContentTypeOptions: async (url) => {
+        const command = getCommand(url, 'X-Content-Type-Options');
+        try {
+            const { stdout } = await execPromise(command);
+            if (stdout) {
+                const status = stdout.includes('nosniff') ? 'secure' : 'insecure';
+                const message = status === 'secure'
+                    ? "X-Content-Type-Options được cấu hình an toàn, ngăn chặn MIME sniffing."
+                    : "X-Content-Type-Options được cấu hình không an toàn.";
+                return { status, header: stdout.trim(), message };
+            } else {
+                return { status: 'missing', header: null, message: "Không tìm thấy header X-Content-Type-Options. Website dễ bị tấn công MIME sniffing." };
+            }
+        } catch (e) {
+            return { status: 'error', header: null, message: e.message };
+        }
+    },
+
+    checkCSP: async (url) => {
+        const command = getCommand(url, 'Content-Security-Policy');
+        try {
+            const { stdout } = await execPromise(command);
+            if (stdout) {
+                return { status: 'present', header: stdout.trim(), message: "Header CSP được cấu hình. Cần kiểm tra chi tiết chính sách để đánh giá mức độ an toàn." };
+            } else {
+                return { status: 'missing', header: null, message: "Không tìm thấy header CSP. Website dễ bị tấn công XSS và các loại tấn công injection khác." };
+            }
+        } catch (e) {
+            return { status: 'error', header: null, message: e.message };
+        }
+    },
+
+    checkReferrerPolicy: async (url) => {
+        const command = getCommand(url, 'Referrer-Policy');
+        try {
+            const { stdout } = await execPromise(command);
+            if (stdout) {
+                const secureValues = ['no-referrer', 'same-origin', 'strict-origin',
+                    'strict-origin-when-cross-origin', 'origin', 'origin-when-cross-origin'];
+                const status = secureValues.some(value => stdout.includes(value)) ? 'secure' : 'insecure';
+                const message = status === 'secure'
+                    ? "Referrer-Policy được cấu hình an toàn, bảo vệ thông tin referrer."
+                    : "Referrer-Policy được cấu hình không an toàn, có thể tiết lộ thông tin referrer.";
+                return { status, header: stdout.trim(), message };
+            } else {
+                return { status: 'missing', header: null, message: "Không tìm thấy header Referrer-Policy. Website có thể tiết lộ thông tin referrer không cần thiết." };
+            }
+        } catch (e) {
+            return { status: 'error', header: null, message: e.message };
+        }
+    },
+
+    checkXXSSProtection: async (url) => {
+        const command = getCommand(url, 'X-XSS-Protection');
+        try {
+            const { stdout } = await execPromise(command);
+            if (stdout) {
+                const status = stdout.includes('1; mode=block') ? 'secure' : 'insecure';
+                const message = status === 'secure'
+                    ? "X-XSS-Protection được cấu hình an toàn, kích hoạt bộ lọc XSS của trình duyệt và chặn các phản hồi bị nghi ngờ."
+                    : "X-XSS-Protection được cấu hình không an toàn, vô hiệu hóa bộ lọc XSS của trình duyệt.";
+                return { status, header: stdout.trim(), message };
+            } else {
+                return { status: 'missing', header: null, message: "Không tìm thấy header X-XSS-Protection. Website dễ bị tấn công XSS." };
+            }
+        } catch (e) {
+            return { status: 'error', header: null, message: e.message };
+        }
+    },
+
+    checkSecureCookies: async (url) => {
+        const command = getCommand(url, 'Set-Cookie');
+        try {
+            const { stdout } = await execPromise(command);
+            if (stdout) {
+                const cookies = stdout.trim().split('\n');
+                const secureCookies = cookies.filter(cookie => cookie.includes('Secure') && cookie.includes('HttpOnly'));
+                const status = secureCookies.length === cookies.length ? 'secure' : 'insecure';
+                const message = status === 'secure'
+                    ? "Tất cả cookies được cấu hình an toàn với Secure và HttpOnly flags."
+                    : "Một số cookies không được cấu hình với Secure và HttpOnly flags. Dữ liệu cookie dễ bị đánh cắp.";
+                return { status, header: stdout.trim(), message };
+            } else {
+                return { status: 'no cookies', header: null, message: "Không tìm thấy cookie nào." };
+            }
+        } catch (e) {
+            return { status: 'error', header: null, message: e.message };
+        }
+    }
+};
 
 module.exports = headerChecks;

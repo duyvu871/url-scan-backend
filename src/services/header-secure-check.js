@@ -213,7 +213,7 @@ async function test() {
     console.log('X-Content-Type-Options:', await checkXContentTypeOptions(url));
     // console.log('Headers:', await getHeaders(url));
 }
-test();
+// test();
 
 module.exports = {
     getHeaders,

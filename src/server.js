@@ -13,17 +13,20 @@ const { v4: uuidv4 } = require('uuid');
 const hash = require('./helpers/hash');
 const validation = require('./services/validation');
 const socketLoader = require('./routes/socket');
+const {initRedis, getRedis} = require("./configs/redis");
+const startNmapSubscribe = require("./sub/nmap");
+const {URL} = require("url");
 
 require('dotenv').config({
-    path: path.join(__dirname, '../.env')
+    path: path.posix.join(process.cwd(), '.env')
 });
 process.env.NODE_ENV = process.env.NODE_ENV.trim() || 'development';
 console.log('Environment:', process.env.NODE_ENV);
-global.__basedir = __dirname;
-global.__rootdir = path.resolve(__dirname, '../');
+globalThis.__basedir = __dirname;
+globalThis.__rootdir = path.resolve(__dirname, '../');
 
-fs.mkdirSync(path.join(global.__rootdir, 'storages'), { recursive: true });
-fs.mkdirSync(path.join(global.__rootdir, 'storages', 'screenshots'), { recursive: true });
+fs.mkdirSync(path.join(globalThis.__rootdir, 'storages'), { recursive: true });
+fs.mkdirSync(path.join(globalThis.__rootdir, 'storages', 'screenshots'), { recursive: true });
 
 const listenPort = process.env.PORT || 4000;
 
@@ -51,18 +54,39 @@ app.get('/health', (req, res) => {
 app.head('/health', (req, res) => {
     res.status(200).send('OK').end();
 }); // server health check
-app.use("/storages", express.static(path.join(global.__rootdir, 'storages')));
+app.use("/storages", express.static(path.join(globalThis.__rootdir, 'storages')));
 
 apiRouter.post('/init-scan', AsyncMiddleware.asyncHandler(async (req, res) => {
     if (!req.body.url) return res.status(400).send({error: 'url is required'}).end();
     if (!validation.isValidUrl(req.body.url)) return res.status(400).send({error: 'url is not valid'}).end();
+    const URL = require('url').URL;
+    const myURL = new URL(req.body.url);
+    const domain = myURL.hostname;
+    const isDomainExists = await require('./services/dns').checkDomainExists(domain);
+    if (!isDomainExists) return res.status(404).send({error: 'Domain not found'}).end();
     const clientId = uuidv4();
     cache.set(clientId, {
         url: req.body.url,
         status: 'pending',
-        result: null
+        result: null,
+        timestamp: Date.now()
     });
     res.status(200).send({ clientId }).end();
+}));
+
+apiRouter.post('/get-dns-info',  AsyncMiddleware.asyncHandler(async (req, res) => {
+    if (!req.body.clientId) return res.status(200).send({error: 'clientId is not provided'}).end();
+    const cacheData = cache.get(req.body.clientId);
+    if (!cacheData) return res.status(404).send({error: 'Client not found'}).end();
+    const url = cacheData.url;
+    const {resolveHostname} = require('./services/dns');
+    const URL = require('url').URL;
+    const myURL = new URL(url);
+    const domain = myURL.hostname;
+    console.log(domain);
+    const dnsInfo = await resolveHostname(domain);
+    if (dnsInfo) return res.status(200).send(dnsInfo).end();
+    res.status(404).send({error: 'No DNS info found'}).end();
 }));
 
 apiRouter.get('/get-scan-status/:clientId', (req, res) => {
@@ -194,10 +218,13 @@ apiRouter.post('/nmap', AsyncMiddleware.asyncHandler(async (req, res) => {
     const url = cacheData.url;
 
     try {
+        initRedis();
         const nmap = require("./services/nmap");
-        const results = await nmap(url);
-        if (!results) return res.status(404).send({error: 'No data found'}).end();
-        res.json({ results });
+        // const results = await nmap(url);
+        await getRedis().instanceRedis?.publish('nmap', JSON.stringify(cacheData))
+        // console.log(results);
+        // if (!results) return res.status(404).send({error: 'No data found'}).end();
+        res.json({ message: 'nmap started' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });
@@ -205,6 +232,8 @@ apiRouter.post('/nmap', AsyncMiddleware.asyncHandler(async (req, res) => {
 }));
 
 app.use('/api/v1', apiRouter);
+
+startNmapSubscribe();
 
 const httpServer = http.createServer(app);
 const io = new socket.Server(httpServer, {
