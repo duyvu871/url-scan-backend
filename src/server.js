@@ -79,7 +79,7 @@ apiRouter.post('/get-dns-info',  AsyncMiddleware.asyncHandler(async (req, res) =
     const cacheData = cache.get(req.body.clientId);
     if (!cacheData) return res.status(404).send({error: 'Client not found'}).end();
     const url = cacheData.url;
-    const {resolveHostname} = require('./services/dns');
+    const {resolve4, resolveAny, resolveCname, resolveHostname} = require('./services/dns');
     const URL = require('url').URL;
     const myURL = new URL(url);
     const domain = myURL.hostname;

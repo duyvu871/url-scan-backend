@@ -13,7 +13,8 @@ function execPromise(command) {
     return new Promise((resolve, reject) => {
         exec(command, (error, stdout, stderr) => {
             if (error) {
-                reject(error);
+                console.error(`Lỗi khi thực thi lệnh: ${command}`, error);
+                reject(null);
             } else {
                 resolve({ stdout, stderr });
             }
