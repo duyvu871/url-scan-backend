@@ -5,11 +5,13 @@ function getCommand(url, headerName) {
     if (process.env.NODE_ENV === 'development') {
         return `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['${headerName}']"`;
     } else {
-        return `curl -I ${url} | grep '${headerName.toLowerCase()}'`;
+        const header_name = headerName.toLowerCase();
+        return `curl -I ${url} | grep '${header_name}'`;
     }
 }
 
 function execPromise(command) {
+    console.log(`Thực thi lệnh: ${command}`);
     return new Promise((resolve, reject) => {
         try {
             exec(command, (error, stdout, stderr) => {
@@ -21,7 +23,7 @@ function execPromise(command) {
                 }
             });
         } catch (e) {
-            console.error(`Lỗi khi thực thi lệnh: ${command}`, e);
+            console.log(`Lỗi khi thực thi lệnh: ${command}`, e);
             reject(null);
         }
     });
