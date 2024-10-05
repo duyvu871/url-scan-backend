@@ -205,14 +205,45 @@ async function getHeaders(url) {
 
 async function test() {
     const url = 'https://www.google.com';
-    process.env.NODE_ENV = 'development';
-    console.log('HSTS:', await checkHSTS(url));
-    console.log('X-Frame-Options:', await checkXFrameOptions(url));
-    console.log('CSP:', await checkCSP(url));
-    console.log('Referrer-Policy:', await checkReferrerPolicy(url));
-    console.log('X-XSS-Protection:', await checkXXSSProtection(url));
-    console.log('Secure Cookies:', await checkSecureCookies(url));
-    console.log('X-Content-Type-Options:', await checkXContentTypeOptions(url));
+    // process.env.NODE_ENV = 'development';
+    // console.log('HSTS:', await checkHSTS(url));
+    // console.log('X-Frame-Options:', await checkXFrameOptions(url));
+    // console.log('CSP:', await checkCSP(url));
+    // console.log('Referrer-Policy:', await checkReferrerPolicy(url));
+    // console.log('X-XSS-Protection:', await checkXXSSProtection(url));
+    // console.log('Secure Cookies:', await checkSecureCookies(url));
+    // console.log('X-Content-Type-Options:', await checkXContentTypeOptions(url));
+    const http = require('https'); // Hoặc 'https' cho HTTPS
+
+    const options = {
+        hostname: 'nodejs.org',
+        // port: 443, // Hoặc 443 cho HTTPS
+        path: '/',
+        method: 'GET'
+    };
+
+    const req = http.request('https://nodejs.org', (res) => {
+        // console.log('Headers:', req.getHeaders());
+
+        res.on('data', (chunk) => {
+            // Xử lý data (nếu cần)
+        });
+
+        res.on('end', () => {
+            // console.log('Headers:', req.getHeaders());
+
+            console.log('Response kết thúc');
+        });
+    });
+
+    req.on('error', (error) => {
+        console.error('Lỗi:', error);
+    });
+    req.on('response', (response) => {
+        console.log('Headers:', response.headers);
+
+    })
+    req.end();
     // console.log('Headers:', await getHeaders(url));
 }
 // test();
