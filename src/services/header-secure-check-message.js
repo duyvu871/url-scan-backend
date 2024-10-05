@@ -5,7 +5,7 @@ function getCommand(url, headerName) {
     if (process.env.NODE_ENV === 'development') {
         return `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['${headerName}']"`;
     } else {
-        return `curl -I ${url} | grep '${headerName}'`;
+        return `curl -I ${url} | grep '${headerName.toLowerCase()}'`;
     }
 }
 
