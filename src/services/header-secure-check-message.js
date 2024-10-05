@@ -10,6 +10,15 @@ function getCommand(url, headerName) {
     }
 }
 
+/**
+ * Thực thi lệnh và trả về kết quả dưới dạng Promise
+ * @param command
+ * @returns {Promise<{
+ *     stdout: string,
+ *     stderr: string
+ * } | null>}
+ */
+
 function execPromise(command) {
     console.log(`Thực thi lệnh: ${command}`);
     return new Promise((resolve, reject) => {
@@ -17,14 +26,14 @@ function execPromise(command) {
             exec(command, (error, stdout, stderr) => {
                 if (error) {
                     console.log(`Lỗi khi thực thi lệnh: ${command}`, error);
-                    reject(null);
+                    resolve(null);
                 } else {
                     resolve({ stdout, stderr });
                 }
             });
         } catch (e) {
             console.log(`Lỗi khi thực thi lệnh: ${command}`, e);
-            reject(null);
+            resolve(null);
         }
     });
 }
@@ -33,8 +42,9 @@ const headerChecks = {
     checkHSTS: async (url) => {
         const command = getCommand(url, 'Strict-Transport-Security');
         try {
-            const { stdout } = await execPromise(command);
-            if (stdout) {
+            const execResult = await execPromise(command);
+            if (execResult && execResult.stdout) {
+                const stdout = execResult.stdout;
                 const includeSubDomains = stdout.includes('includeSubDomains');
                 const maxAge = parseInt(stdout.match(/max-age=(\d+)/)?.[1] || "0");
                 const status = includeSubDomains && maxAge >= 31536000 ? 'secure' : 'insecure';
@@ -53,8 +63,9 @@ const headerChecks = {
     checkXFrameOptions: async (url) => {
         const command = getCommand(url, 'X-Frame-Options');
         try {
-            const { stdout } = await execPromise(command);
-            if (stdout) {
+            const execResult = await execPromise(command);
+            if (execResult && execResult.stdout) {
+                const stdout = execResult.stdout;
                 const status = stdout.includes('DENY') || stdout.includes('SAMEORIGIN') ? 'secure' : 'insecure';
                 const message = status === 'secure'
                     ? "X-Frame-Options được cấu hình an toàn, ngăn chặn clickjacking."
@@ -71,8 +82,9 @@ const headerChecks = {
     checkXContentTypeOptions: async (url) => {
         const command = getCommand(url, 'X-Content-Type-Options');
         try {
-            const { stdout } = await execPromise(command);
-            if (stdout) {
+            const execResult = await execPromise(command);
+            if (execResult && execResult.stdout) {
+                const stdout = execResult.stdout;
                 const status = stdout.includes('nosniff') ? 'secure' : 'insecure';
                 const message = status === 'secure'
                     ? "X-Content-Type-Options được cấu hình an toàn, ngăn chặn MIME sniffing."
@@ -89,8 +101,9 @@ const headerChecks = {
     checkCSP: async (url) => {
         const command = getCommand(url, 'Content-Security-Policy');
         try {
-            const { stdout } = await execPromise(command);
-            if (stdout) {
+            const execResult = await execPromise(command);
+            if (execResult && execResult.stdout) {
+                const stdout = execResult.stdout;
                 return { status: 'present', header: stdout.trim(), message: "Header CSP được cấu hình. Cần kiểm tra chi tiết chính sách để đánh giá mức độ an toàn." };
             } else {
                 return { status: 'missing', header: null, message: "Không tìm thấy header CSP. Website dễ bị tấn công XSS và các loại tấn công injection khác." };
@@ -103,8 +116,9 @@ const headerChecks = {
     checkReferrerPolicy: async (url) => {
         const command = getCommand(url, 'Referrer-Policy');
         try {
-            const { stdout } = await execPromise(command);
-            if (stdout) {
+            const execResult = await execPromise(command);
+            if (execResult && execResult.stdout) {
+                const stdout = execResult.stdout;
                 const secureValues = ['no-referrer', 'same-origin', 'strict-origin',
                     'strict-origin-when-cross-origin', 'origin', 'origin-when-cross-origin'];
                 const status = secureValues.some(value => stdout.includes(value)) ? 'secure' : 'insecure';
@@ -123,8 +137,9 @@ const headerChecks = {
     checkXXSSProtection: async (url) => {
         const command = getCommand(url, 'X-XSS-Protection');
         try {
-            const { stdout } = await execPromise(command);
-            if (stdout) {
+            const execResult = await execPromise(command);
+            if (execResult && execResult.stdout) {
+                const stdout = execResult.stdout;
                 const status = stdout.includes('1; mode=block') ? 'secure' : 'insecure';
                 const message = status === 'secure'
                     ? "X-XSS-Protection được cấu hình an toàn, kích hoạt bộ lọc XSS của trình duyệt và chặn các phản hồi bị nghi ngờ."
@@ -141,8 +156,9 @@ const headerChecks = {
     checkSecureCookies: async (url) => {
         const command = getCommand(url, 'Set-Cookie');
         try {
-            const { stdout } = await execPromise(command);
-            if (stdout) {
+            const execResult = await execPromise(command);
+            if (execResult && execResult.stdout) {
+                const stdout = execResult.stdout;
                 const cookies = stdout.trim().split('\n');
                 const secureCookies = cookies.filter(cookie => cookie.includes('Secure') && cookie.includes('HttpOnly'));
                 const status = secureCookies.length === cookies.length ? 'secure' : 'insecure';
