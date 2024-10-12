@@ -1,13 +1,3 @@
-
-/*
- * NodeJS <-> NMAP interface + Vulners Script
- * Fork Author: Tommaso Pezzi
- * Original Author:  John Horton
- *
- * Purpose: Create an interface for NodeJS applications to make use of NMAP installed on the local system.
- * The package is also able to manage Vulners Script Output
- */
-
 const child_process = require('child_process');
 const execSync = child_process.execSync;
 const exec = child_process.exec;
@@ -204,6 +194,13 @@ class NmapScan extends EventEmitter {
         process.on('exit', this.killChild);
         this.child.stdout.on("data", (data) => {
             if (data.indexOf("percent") > -1) {
+                xml2js.parseString(data.toString(), (err, result) => {
+                    if (err) {
+                        this.emit('error', "Error converting XML to JSON in xml2js: " + err);
+                    } else {
+                        this.emit('progress', result.taskprogress.$);
+                    }
+                });
                 // console.log(data.toString());
             } else {
                 this.rawData += data;
@@ -292,11 +289,15 @@ let nmap = {
 //
 // nmapscan.startScan();
 
-async function nmapScan(url){
-   console.log(url);
+/**
+ * @param {string} domain
+ * @returns {Promise<any>}
+ */
+async function nmapScan(domain){
+   console.log(domain);
    return new Promise((resolve, reject) => {
        nmap.nmapLocation = "nmap"; //default
-       let quickscan = new nmap.NmapScan(url.replace('https://', "")+' -O -sV --script vulners');
+       let quickscan = new nmap.NmapScan(`${domain} -Pn -vv --stats-every 1s -O -sV `);
        quickscan.on('complete', function(data) {
            resolve(data);
            // console.log(data);
@@ -305,8 +306,19 @@ async function nmapScan(url){
            reject(null);
            console.log(error);
        });
+       quickscan.on('progress', (data) => {
+           console.log('scanProgress', data);
+       });
        quickscan.startScan();
    });
 }
+ // nmapScan('example.com').then((data) => {
+ //     console.log(data);
+ // }).catch((err) => {
+ //     console.log(err);
+ // });
 
-module.exports = nmapScan;
+module.exports = {
+    nmap,
+    nmapScan
+};

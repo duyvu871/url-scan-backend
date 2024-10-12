@@ -8,15 +8,15 @@ function isValidUrl(string) {
 }
 
 function isValidEmail(string) {
-    return validator.isEmail(string);
+    return validator.default.isEmail(string);
 }
 
 function isValidUsername(string) {
-    return validator.isAlphanumeric(string);
+    return validator.default.isAlphanumeric(string);
 }
 
 function isValidPassword(string) {
-    return validator.isStrongPassword(string);
+    return validator.default.isStrongPassword(string);
 }
 
 module.exports = {

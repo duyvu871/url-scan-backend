@@ -1,12 +1,22 @@
 const { exec } = require('child_process');
 const _ = require('lodash');
 
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36';
+const REQUEST_HEADERS = [
+    'pragma: no-cache',
+    'cache-control: no-cache',
+]
+
 function getCommand(url, headerName) {
     if (process.env.NODE_ENV === 'development') {
-        return `powershell -Command "(Invoke-WebRequest -Uri ${url} -UseBasicParsing).Headers['${headerName}']"`;
+        return `powershell -Command "($headers: @{${
+            REQUEST_HEADERS
+                .map(header => header.split(":"))
+                .map(([key, value]) => `\"${key}\" = \"${value}\"`)
+        } Invoke-WebRequest -Uri ${url} -UserAgent \"${UA}\" -UseBasicParsing).Headers['${headerName}']"`;
     } else {
         const header_name = headerName.toLowerCase();
-        return `curl -I ${url} | grep '${header_name}'`;
+        return `curl -A \"${UA}\" ${REQUEST_HEADERS.map(header => `-H \"${header}\"`).join(' ')} -I ${url} | grep '${header_name}'`;
     }
 }
 

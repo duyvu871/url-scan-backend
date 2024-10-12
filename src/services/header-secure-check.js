@@ -141,10 +141,13 @@ function checkXContentTypeOptions(url) {
 
 function execPromise(command) {
     return new Promise((resolve, reject) => {
+        console.log('command:', command);
         exec(command, (error, stdout, stderr) => {
             if (error) {
                 reject(error);
             } else {
+
+                console.log('stdout:', stdout);
                 resolve({ stdout, stderr });
             }
         });
@@ -155,10 +158,6 @@ async function getHeaders(url) {
     try {
         if (process.env.NODE_ENV === 'development') {
             const { stdout: headersAsJSON } = await execPromise(`powershell.exe -Command "(Invoke-WebRequest -Uri ${url} -Method Head) | Select-Object -Property * | ConvertTo-Json"`)
-            // const { stdout: statusLine } = await execPromise(`powershell.exe -Command "(Invoke-WebRequest -Uri ${url} -Method Head).StatusCode + " " + (Invoke-WebRequest -Uri ${url} -Method Head).StatusDescription | Out-String -Stream`);
-            // const { stdout: requestHeaders } = await execPromise(`powershell.exe -Command "(Invoke-WebRequest -Uri ${url} -Method Head).Headers.Keys | Where-Object { $_ -notin "Set-Cookie", "Date", "Expires", "Cache-Control", "Transfer-Encoding", "Content-Type", "Vary", "Server", "Content-Length", "Connection" } | ForEach-Object { "$_: $((Invoke-WebRequest -Uri ${url} -Method Head).Headers[$_])" } | Out-String -Stream`);
-            // const { stdout: responseHeaders } = await execPromise(`powershell.exe -Command "(Invoke-WebRequest -Uri ${url} -Method Head).Headers.Keys | Where-Object { $_ -in "Set-Cookie", "Date", "Expires", "Cache-Control", "Transfer-Encoding", "Content-Type", "Vary", "Server", "Content-Length", "Connection" } | ForEach-Object { "$_: $((Invoke-WebRequest -Uri ${url} -Method Head).Headers[$_])" } | Out-String -Stream`);
-            // console.log((await execPromise(`powershell.exe -Command "(Invoke-WebRequest -Uri ${url} -Method Head) "`)).stdout);
             const headerJSON = JSON.parse(isValidJSON(headersAsJSON) ? headersAsJSON : "{}");
             return {
                 responseStatusLine: headerJSON.RawContent.split('\n')[0].replace('\r', ''),
@@ -183,11 +182,6 @@ async function getHeaders(url) {
                 requestHeaders.push(header);
                 responseHeaders.push(header);
 
-                // if (isResponseHeader) {
-                //     responseHeaders.push(header);
-                // } else {
-                //     requestHeaders.push(header);
-                // }
             }
 
             return {
