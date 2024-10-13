@@ -29,6 +29,8 @@ async function takePageScreenShot(url) {
         return [writeError, null];
     }
     const staticFilePath = path.join('storages/screenshots', fileName);
+    await browserless.destroyContext();
+    await browser.close();
     return [null, staticFilePath];
 }
 

@@ -12,7 +12,7 @@ async function reloadConf() {
 async function getIPInfo(ip) {
     await reloadConf();
     const result = await ipLocation.lookup(ip);
-    // console.log(result);
+    // console.logs(result);
     // ipLocation.watchDb();
     console.log(result)
     return result;

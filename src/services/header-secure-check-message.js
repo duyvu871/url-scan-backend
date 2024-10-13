@@ -12,8 +12,8 @@ function getCommand(url, headerName) {
         return `powershell -Command "($headers: @{${
             REQUEST_HEADERS
                 .map(header => header.split(":"))
-                .map(([key, value]) => `\"${key}\" = \"${value}\"`)
-        } Invoke-WebRequest -Uri ${url} -UserAgent \"${UA}\" -UseBasicParsing).Headers['${headerName}']"`;
+                .map(([key, value]) => `\"${key}\" = \"${value}\"`).join(';')
+        }}) ; Invoke-WebRequest -Uri ${url} -UserAgent \"${UA}\" -UseBasicParsing).Headers['${headerName}']"`;
     } else {
         const header_name = headerName.toLowerCase();
         return `curl -A \"${UA}\" ${REQUEST_HEADERS.map(header => `-H \"${header}\"`).join(' ')} -I ${url} | grep '${header_name}'`;

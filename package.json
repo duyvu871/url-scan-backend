@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:ip-geo": "node testing/ip-geo.test.js",
+    "test:sql-injection": "node testing/sql-injection.test.js",
     "start": "node src/server.js",
     "dev": "set NODE_ENV=development && set PORT=4000 && nodemon --ignore storage src/server.js"
   },
@@ -30,6 +31,8 @@
     "mongoose": "^8.7.0",
     "node-nmap": "^4.0.0",
     "puppeteer": "^23.4.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "simple-wappalyzer": "^1.1.68",
     "socket.io": "^4.8.0",
     "ssl-checker": "^2.0.10",
@@ -37,7 +40,8 @@
     "subquest": "^1.5.3",
     "uuid": "^10.0.0",
     "validator": "^13.12.0",
-    "xml2js": "^0.6.2"
+    "xml2js": "^0.6.2",
+    "axios": "^1.7.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"

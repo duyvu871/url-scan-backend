@@ -28,8 +28,6 @@ async function update(clientId, headers) {
     return await scanModel.updateOne({clientId}, headers).exec();
 }
 
-
-
 module.exports = {
     getOne,
     get,

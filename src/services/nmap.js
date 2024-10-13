@@ -62,23 +62,23 @@ function convertRawJsonToScanResults(xmlInput) {
             })
 
             newHost.openPorts = openPorts.map((portItem) => {
-
+                console.log('portItem', portItem)
                 const port = parseInt(portItem.$.portid)
-                const protocol = portItem.$.protocol
-                const service = portItem.service[0].$.name
-                const tunnel = portItem.service[0].$.tunnel
-                const method = portItem.service[0].$.method
-                const product = portItem.service[0].$.tunnel
+                const protocol = portItem.$.protocol;
+                const service = portItem.service?.[0]?.$.name;
+                const tunnel = portItem.service?.[0]?.$?.tunnel
+                const method = portItem.service?.[0]?.$?.method
+                const product = portItem.service?.[0]?.$?.tunnel
 
                 // check for <script> tag on nmap output
                 if (portItem.script) {
                     var scriptID = portItem.script[0].$.id
-                    // console.log(scriptID)
+                    // console.logs(scriptID)
                     var scriptOutput = [];
                     for (var i = 0; i < portItem.script.length; i++) {
                         if (portItem.script[i].$.id === 'vulners') {
                             scriptID = portItem.script[i].$.id
-                            //console.log(portItem.script[i].$.output)
+                            //console.logs(portItem.script[i].$.output)
 
                             for (var j = 0; j < portItem.script[i].table.length; j++) {
                                 for (var k = 0; k < portItem.script[i].table[j].table.length; k++) {
@@ -92,8 +92,8 @@ function convertRawJsonToScanResults(xmlInput) {
                                 }
                             }
                             /* uncomment to debug
-                              console.log("scriptID = " + scriptID)
-                              console.log("scriptOutput = " + scriptOutput)
+                              console.logs("scriptID = " + scriptID)
+                              console.logs("scriptOutput = " + scriptOutput)
                             */
                         }
 
@@ -201,7 +201,7 @@ class NmapScan extends EventEmitter {
                         this.emit('progress', result.taskprogress.$);
                     }
                 });
-                // console.log(data.toString());
+                // console.logs(data.toString());
             } else {
                 this.rawData += data;
             }
@@ -276,15 +276,15 @@ let nmap = {
 // const nmapscan = new nmap.NmapScan('connectedbrain.com.vn -O -sV --script vulners');
 //
 // nmapscan.on('complete',function(data){
-//     console.log(data);
+//     console.logs(data);
 //     fs.writeFile('output.json', JSON.stringify(data), function(err){
 //         if(err){
-//             console.log(err);
+//             console.logs(err);
 //         }
 //     });
 // });
 // nmapscan.on('error', function(error){
-//     console.log(error);
+//     console.logs(error);
 // });
 //
 // nmapscan.startScan();
@@ -300,7 +300,7 @@ async function nmapScan(domain){
        let quickscan = new nmap.NmapScan(`${domain} -Pn -vv --stats-every 1s -O -sV `);
        quickscan.on('complete', function(data) {
            resolve(data);
-           // console.log(data);
+           // console.logs(data);
        });
        quickscan.on('error', function(error){
            reject(null);
@@ -313,9 +313,9 @@ async function nmapScan(domain){
    });
 }
  // nmapScan('example.com').then((data) => {
- //     console.log(data);
+ //     console.logs(data);
  // }).catch((err) => {
- //     console.log(err);
+ //     console.logs(err);
  // });
 
 module.exports = {

@@ -16,6 +16,7 @@ const socketLoader = require("./routes/socket");
 const { initRedis, getRedis } = require("./configs/redis");
 const {URL} = require("url");
 const ipGeoTest = require("./services/ip-geo");
+const {nmap} = require("./services/nmap");
 const processLookupMiddleware =
     require("./middlewares/process-lookup").processLookup;
 
@@ -32,24 +33,7 @@ fs.mkdirSync(path.join(globalThis.__rootdir, "storages", "screenshots"), { recur
 fs.mkdirSync(path.join(globalThis.__rootdir, "storages", "dirbuster"), { recursive: true });
 
 const listenPort = process.env.PORT || 4000;
-
 const app = express();
-const httpServer = http.createServer(app);
-const io = new socket.Server(httpServer, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"],
-    },
-    path: "/socket",
-});
-
-globalThis.__io = io;
-io.on("connection", (socket) => {
-    console.log("User connected");
-    socket.on("disconnect", () => {
-        console.log("User disconnected");
-    });
-});
 
 app.enable("trust proxy"); // trust first proxy
 app.use(
@@ -186,7 +170,7 @@ apiRouter.post(
                     });
                 });
             }
-            // console.log(ipInfo)
+            // console.logs(ipInfo)
             const update = await require("./services/db/scan").update(
                 execData.clientId,
                 { ips: ips, geo: ipInfo.geo, asn: ipInfo.asn },
@@ -291,7 +275,7 @@ apiRouter.post(
         const events = {
             data: (data) => {
                 // res.write(data);
-                // console.log(data);
+                // console.logs(data);
                 globalThis.__io.of("/dirbuster").to(clientId).emit("data", data);
             },
             error: (err) => {
@@ -319,7 +303,7 @@ apiRouter.post(
             globalThis.__dirbusterStream__ &&
             globalThis.__dirbusterStream__[req.params.clientId]
         ) {
-            // console.log(req.params.clientId);
+            // console.logs(req.params.clientId);
             globalThis.__dirbusterStream__[req.params.clientId].end();
             res.status(200).send({ message: "Aborted" }).end();
         } else {
@@ -389,7 +373,7 @@ apiRouter.post(
         try {
             const headerChecks = require("./services/header-secure-check");
             const headers = await headerChecks.getHeaders(url);
-            // console.log(headers);
+            // console.logs(headers);
             const update = await require("./services/db/scan").update(
                 execData.clientId,
                 { headers: JSON.stringify(headers) },
@@ -423,7 +407,7 @@ apiRouter.post(
                 "nmap",
                 JSON.stringify(cacheData),
             );
-            // console.log(results);
+            // console.logs(results);
             // if (!results) return res.status(404).send({error: 'No data found'}).end();
             res.json({ message: "nmap started" });
         } catch (error) {
@@ -465,45 +449,71 @@ apiRouter.post("/check-ssl",
 );
 
 app.use("/api/v1", apiRouter);
+const httpServer = http.createServer(app);
+const io = new socket.Server(httpServer, {
+    cors: {
+        origin: "*",
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    },
+    path: "/socket",
+});
+globalThis.__io = io;
 
-io.of('/feature/nmap', (socket) => {
-    socket.on('start-nmap-scan', async (data) => {
+io.on("connection", (socket) => {
+    console.log("User connected", socket.id)
+
+    socket.on('start_nmap_scan', async (data) => {
         try {
-            console.log(data)
+            console.log("nmap connected");
+
+            console.log(data);
             const parseData = JSON.parse(data);
-            if (!parseData.clientId)
-                socket.emit('error', {error: 'clientId is not provided'});
-            else {
-                const cacheData = require('./services/db/scan').getOne({clientId: parseData.clientId});
-                if (!cacheData) {
-                    socket.emit('error', {error: 'clientId is not provided'});
-                } else {
-                    const executedData = await cacheData.exec();
-                    const url = executedData.url;
-                    const domain = new URL(url).hostname;
-                    const {nmap} = require("./services/nmap");
-                    nmap.nmapLocation = "nmap";
-                    let quickscan = new nmap.NmapScan(domain + ' -O -sV --script vulners');
-                    quickscan.on('complete', function(data) {
-                        socket.emit('complete', data);
-                        console.log(data);
-                    });
-                    quickscan.on('error', function(error){
-                        socket.emit('error', {error: 'Internal server error'});
-                        console.log(error);
-                    });
-                    quickscan.startScan();
-                    console.log(data);
-                }
+
+            if (!parseData.clientId) {
+                socket.emit('error', { error: 'clientId is not provided' });
+                return;
             }
+
+            const cacheData = require('./services/db/scan').getOne({ clientId: parseData.clientId });
+            if (!cacheData) {
+                socket.emit('error', { error: 'clientId is not found' });
+                return;
+            }
+
+            const executedData = await cacheData.exec();
+            console.log(executedData)
+            const url = executedData.url;
+            const domain = new URL(url).hostname;
+
+            const { nmap } = require("./services/nmap");
+            nmap.nmapLocation = "nmap";
+            let quickscan = new nmap.NmapScan(`${domain} --min-parallelism 4 --max-parallelism 10 -Pn -sT -vv --stats-every 1s -O --script http-enum`);
+            quickscan.on('progress', (data) => {
+                socket.emit('progress', data);
+                console.log('scanProgress', data);
+            });
+            quickscan.on('complete', (data) => {
+                socket.emit('complete', data);
+                console.log(data);
+            });
+
+            quickscan.on('error', (error) => {
+                socket.emit('error', { error: 'Internal server error' });
+                console.log(error);
+            });
+
+            quickscan.startScan();
+            console.log(data);
+            socket.on("disconnect", () => {
+                quickscan.cancelScan();
+            });
         } catch (e) {
-            socket.emit('error', {error: 'Internal server error'});
+            console.log('nmap error', e);
+            socket.emit('error', { error: 'Internal server error' });
         }
     });
-    socket.on('start-check-ssl', async (data) => {
+});
 
-    });
-})
 socketLoader.loadDirBuster(io);
 
 // startNmapSubscribe();

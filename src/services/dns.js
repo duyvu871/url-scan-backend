@@ -106,10 +106,10 @@ async function checkDomainExists(domain) {
 
 async function test() {
     console.log(await resolveHostname('connectedbrain.com.vn'));
-    // console.log(await resolve4('google.com'));
-    // console.log(await resolve6('google.com'));
-    // console.log(await resolveCname('google.com'));
-    // console.log(await resolveAny('connectedbrain.com.vn'));
+    // console.logs(await resolve4('google.com'));
+    // console.logs(await resolve6('google.com'));
+    // console.logs(await resolveCname('google.com'));
+    // console.logs(await resolveAny('connectedbrain.com.vn'));
 }
 // test()
 

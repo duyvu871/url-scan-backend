@@ -21,7 +21,7 @@ const domainDirBuster = (url, events, timeout = 60000 * 10) => {
     })
 
     options.outStream._write = function (chunk, enc, next) {
-        // console.log(chunk.toString('utf8'));
+        // console.logs(chunk.toString('utf8'));
         events.data && events.data(chunk.toString('utf8'));
         next()
     };
