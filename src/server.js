@@ -17,6 +17,8 @@ const { initRedis, getRedis } = require("./configs/redis");
 const {URL} = require("url");
 const ipGeoTest = require("./services/ip-geo");
 const {nmap} = require("./services/nmap");
+const SqlInjection = require("./services/database-injection/sql-injection");
+const {timeout} = require("ioredis/built/utils");
 const processLookupMiddleware =
     require("./middlewares/process-lookup").processLookup;
 
@@ -509,6 +511,69 @@ io.on("connection", (socket) => {
             });
         } catch (e) {
             console.log('nmap error', e);
+            socket.emit('error', { error: 'Internal server error' });
+        }
+    });
+    socket.on('start_sql_injection_scan', async (data) => {
+        try {
+            let dataParse = JSON.parse(data);
+            const url = dataParse.url;
+            if (!url) {
+                socket.emit('error', { error: 'url is required' });
+                return;
+            }
+            const method = dataParse.method || 'GET';
+            const params = (dataParse.params||"").split(",").map(str => str.trim()).reduce((acc, cur) => ({
+                ...acc,
+                [cur.split(":")[0]]: cur.split(":")[1]
+            }), {});
+            const body = (dataParse.body || "").split(",").map(str => str.trim()).reduce((acc, cur) => ({
+                ...acc,
+                [cur.split(":")[0]]: cur.split(":")[1]
+            }), {});
+            const headersClient = (dataParse.headers || "").split(",").map(str => str.trim()).reduce((acc, cur) => ({
+                ...acc,
+                [cur.split(":")[0]]: cur.split(":")[1]
+            }), {});
+            const pathClient = dataParse.path || '';
+
+            console.log(
+                url,
+                headersClient,
+                method,
+                params,
+                body
+            )
+
+            const SqlInjection = require("./services/database-injection/sql-injection");
+            const sql = new SqlInjection('client-id', {url, method, params, body});
+            const headers = await sql.preFetchHeaders();
+            sql.event.on('sql-injection-error-based', (data) => {
+                const {query, response, time} = data;
+                const {url, method, params, body, maliciousQuery} = query;
+                console.log(`[Request]:\n -time:${time}\n -${url}\n\ -${method}\n\ -${JSON.stringify(params)}\n -${JSON.stringify(body)}\n -${maliciousQuery}`);
+                console.log(`[Response]:\n -${response.message}\n -${maliciousQuery} `);
+                socket.emit('progress', {
+                    request: `[Request]: -time:${time} -${url} -${method} -${dataParse.params} -${dataParse.body}`,
+                    response: `[Response]: -${response.message} -${maliciousQuery}`});
+            })
+            const response = await sql.scanInjectionWithErrorBased();
+            const timeout = require("./helpers/delay");
+            await sql.scanWithDictionary(path.posix.join(process.cwd(), 'src/services/database-injection/signature/sql/Generic_SQLI.txt'));
+            await timeout(5000);
+            await sql.scanWithDictionary(path.posix.join(process.cwd(), 'src/services/database-injection/signature/sql/Generic_TimeBased.txt'));
+            await timeout(5000);
+            await sql.scanWithDictionary(path.posix.join(process.cwd(), 'src/services/database-injection/signature/sql/Generic_UnionSelect.txt'));
+            await timeout(5000);
+            await sql.scanWithDictionary(path.posix.join(process.cwd(), 'src/services/database-injection/signature/sql/GenericBlind.txt'));
+            await timeout(5000);
+            await sql.scanWithDictionary(path.posix.join(process.cwd(), 'src/services/database-injection/signature/sql/payloads-sql-blind-MySQL-INSERT.txt'));
+            await timeout(5000);
+            await sql.scanWithDictionary(path.posix.join(process.cwd(), 'src/services/database-injection/signature/sql/payloads-sql-blind-MySQL-ORDER_BY.txt'));
+            await timeout(5000);
+            await sql.scanWithDictionary(path.posix.join(process.cwd(), 'src/services/database-injection/signature/sql/payloads-sql-blind-MySQL-WHERE.txt'));
+        } catch (error) {
+            console.log(error);
             socket.emit('error', { error: 'Internal server error' });
         }
     });

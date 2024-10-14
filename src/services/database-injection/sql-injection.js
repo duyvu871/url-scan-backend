@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const EventEmitter = require('events').EventEmitter;
 const { performance } = require('perf_hooks');
+const timeout = require("../../helpers/delay");
 
 class SqlInjection {
     clientId = null;
@@ -151,10 +152,57 @@ class SqlInjection {
                     response,
                 });
             }
+            await timeout(500);
         }
 
     }
+    async scanWithDictionary(dictionaryPath) {
+        const dictionary = await fs.promises.readFile(dictionaryPath, 'utf-8');
+        const payloads = dictionary.split('\n');
+        const queries = payloads.map(payload => {
+            const params = this.options.params;
+            const body = this.options.body;
+            return {
+                maliciousQuery: payload,
+                url: this.options.url,
+                method: this.options.method,
+                params: {
+                    ...Object.keys(params).reduce((acc, key) => {
+                        acc[key] = params[key] + payload;
+                        return acc;
+                    }, {}),
+                },
+                body: {
+                    ...Object.keys(body).reduce((acc, key) => {
+                        acc[key] = body[key] + payload;
+                        return acc;
+                    }, {}),
+                },
+            }
+        });
+        for (const query of queries) {
+            const startTime = performance.now();
+            const response = await this.handleRequest(query.url, query.method, query.params, query.body);
+            const endTime = performance.now();
 
+            this.event.emit('sql-injection-error-based', {
+                time: endTime - startTime,
+                maliciousQuery: query.maliciousQuery,
+                query,
+                response,
+            });
+            this.logStream.write(`[Request]: time:${endTime - startTime} - ${query.url} - ${query.method} - ${JSON.stringify(query.params)} - ${JSON.stringify(query.body)} - ${query.maliciousQuery}\n`);
+            this.logStream.write(`[Response]: ${response.message} - ${query.maliciousQuery}\n`);
+            if (response.data) {
+                this.vulnerabilities.ERROR_BASED.push({
+                    query,
+                    response,
+                });
+            }
+            await timeout(500);
+        }
+
+    }
 }
 
 module.exports = SqlInjection;
